@@ -1,0 +1,200 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, stage]
+  pull_request:
+    branches: [main, stage]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('service/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        working-directory: ./service
+        run: go mod download
+
+      - name: Run tests
+        working-directory: ./service
+        run: go test ./...
+
+      - name: Run go vet
+        working-directory: ./service
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: service
+
+  build-and-deploy:
+    name: Build and Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stage')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "ENV_NAME=prod" >> "$GITHUB_OUTPUT"
+            echo "ENV_DIR=terraform/prod" >> "$GITHUB_OUTPUT"
+            echo "PROJECT_ID=dfh-prod-id" >> "$GITHUB_OUTPUT"
+            echo "SERVICE_NAME=music-generator-prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "ENV_NAME=stage" >> "$GITHUB_OUTPUT"
+            echo "ENV_DIR=terraform/stage" >> "$GITHUB_OUTPUT"
+            echo "PROJECT_ID=dfh-stage-id" >> "$GITHUB_OUTPUT"
+            echo "SERVICE_NAME=music-generator-stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Conditional auth — two separate steps to avoid the GitHub Actions
+      # `${{ A && B || C }}` ternary bug when handling secrets.
+      - name: Authenticate to GCP (staging)
+        if: steps.env.outputs.ENV_NAME == 'stage'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_STAGE_SA_KEY }}
+
+      - name: Authenticate to GCP (production)
+        if: steps.env.outputs.ENV_NAME == 'prod'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_PROD_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Compute version
+        id: version
+        run: |
+          BASE=$(cat VERSION | tr -d '[:space:]')
+          COUNT=$(git rev-list --count HEAD)
+          MAJOR_MINOR=$(echo "$BASE" | cut -d. -f1,2)
+          VERSION="v${MAJOR_MINOR}.${COUNT}"
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building version: $VERSION"
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t gcr.io/${{ steps.env.outputs.PROJECT_ID }}/music-generator:${{ steps.version.outputs.VERSION }} \
+            -t gcr.io/${{ steps.env.outputs.PROJECT_ID }}/music-generator:latest \
+            -f service/Dockerfile \
+            service/
+
+      - name: Push Docker image
+        run: |
+          docker push gcr.io/${{ steps.env.outputs.PROJECT_ID }}/music-generator:${{ steps.version.outputs.VERSION }}
+          docker push gcr.io/${{ steps.env.outputs.PROJECT_ID }}/music-generator:latest
+
+      - name: Pre-deploy resource conflict check
+        run: |
+          set -e
+          PROJECT_ID='${{ steps.env.outputs.PROJECT_ID }}'
+          SERVICE_NAME='${{ steps.env.outputs.SERVICE_NAME }}'
+
+          echo "Checking for pre-existing Cloud Run service '$SERVICE_NAME' outside Terraform state..."
+          SERVICE_OUT=$(gcloud run services describe "$SERVICE_NAME" \
+            --region=us-central1 \
+            --project="$PROJECT_ID" \
+            --format='value(metadata.name)' 2>/dev/null || true)
+          if [ -n "$SERVICE_OUT" ]; then
+            echo "::notice ::Cloud Run service $SERVICE_NAME already exists — Terraform will manage it (state import may be required if not present in state)."
+          fi
+
+          echo "Checking for pre-existing Firestore database 'music-generator'..."
+          DB_OUT=$(gcloud firestore databases describe \
+            --database=music-generator \
+            --project="$PROJECT_ID" \
+            --format='value(name)' 2>/dev/null || true)
+          if [ -n "$DB_OUT" ]; then
+            echo "::notice ::Firestore database music-generator already exists — Terraform will manage it."
+          fi
+
+          echo "Pre-deploy check complete."
+
+      - name: Terraform init
+        working-directory: ${{ steps.env.outputs.ENV_DIR }}
+        run: terraform init
+
+      - name: Terraform validate
+        working-directory: ${{ steps.env.outputs.ENV_DIR }}
+        run: terraform validate
+
+      - name: Terraform plan
+        working-directory: ${{ steps.env.outputs.ENV_DIR }}
+        run: terraform plan -var="image_tag=${{ steps.version.outputs.VERSION }}" -out=tfplan
+
+      - name: Terraform apply
+        working-directory: ${{ steps.env.outputs.ENV_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Get service URL
+        id: get-url
+        working-directory: ${{ steps.env.outputs.ENV_DIR }}
+        run: |
+          SERVICE_URL=$(terraform output -raw service_url)
+          CUSTOM_DOMAIN_URL=$(terraform output -raw custom_domain_url)
+          echo "SERVICE_URL=$SERVICE_URL" >> "$GITHUB_OUTPUT"
+          echo "CUSTOM_DOMAIN_URL=$CUSTOM_DOMAIN_URL" >> "$GITHUB_OUTPUT"
+          echo "Service URL:   $SERVICE_URL"
+          echo "Custom domain: $CUSTOM_DOMAIN_URL"
+
+      - name: Smoke test (/health)
+        run: |
+          URL='${{ steps.get-url.outputs.SERVICE_URL }}'
+          echo "Smoke testing $URL/health ..."
+          curl --fail --show-error --silent \
+            --retry 10 --retry-delay 6 --retry-connrefused \
+            --max-time 15 \
+            "$URL/health"
+          echo
+          echo "Health check passed."
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "### Deployment: ${{ steps.env.outputs.ENV_NAME }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: ${{ steps.version.outputs.VERSION }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Service URL: ${{ steps.get-url.outputs.SERVICE_URL }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Custom domain: ${{ steps.get-url.outputs.CUSTOM_DOMAIN_URL }}" >> "$GITHUB_STEP_SUMMARY"
