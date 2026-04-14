@@ -1,0 +1,23 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# macOS
+.DS_Store
+
+# Secrets and credentials
+.env
+.env.*
+*-key.json
+*-credentials.json
+service-account*.json
+
+# Build output
+bin/
+dist/
