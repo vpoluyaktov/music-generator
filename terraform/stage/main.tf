@@ -43,6 +43,12 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "openai_api_key" {
+  description = "OpenAI API key — stored in Secret Manager"
+  type        = string
+  sensitive   = true
+}
+
 provider "google" {
   project = local.project_id
   region  = local.region
@@ -101,20 +107,38 @@ resource "google_project_iam_member" "runtime_firestore" {
   member  = "serviceAccount:${google_service_account.runtime.email}"
 }
 
-resource "google_project_iam_member" "runtime_secrets" {
-  project = local.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.runtime.email}"
+# -----------------------------------------------------------------------------
+# Secret Manager — openai-api-key
+# -----------------------------------------------------------------------------
+# The secret may pre-exist (created out-of-band previously). The import block
+# lets Terraform adopt it without failing on "already exists".
+
+import {
+  to = google_secret_manager_secret.openai_key
+  id = "projects/dfh-stage-id/secrets/openai-api-key"
 }
 
-# Secret-level IAM binding for the openai-api-key secret (created out-of-band)
-resource "google_secret_manager_secret_iam_member" "runtime_openai_key" {
+resource "google_secret_manager_secret" "openai_key" {
   project   = local.project_id
   secret_id = local.openai_secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.runtime.email}"
+
+  replication {
+    auto {}
+  }
 
   depends_on = [google_project_service.apis]
+}
+
+resource "google_secret_manager_secret_version" "openai_key" {
+  secret      = google_secret_manager_secret.openai_key.id
+  secret_data = var.openai_api_key
+}
+
+resource "google_secret_manager_secret_iam_member" "runtime_openai_key" {
+  project   = local.project_id
+  secret_id = google_secret_manager_secret.openai_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.runtime.email}"
 }
 
 # -----------------------------------------------------------------------------
@@ -155,11 +179,6 @@ resource "google_cloud_run_v2_service" "app" {
       }
 
       env {
-        name  = "PORT"
-        value = "8080"
-      }
-
-      env {
         name  = "ENVIRONMENT"
         value = local.environment
       }
@@ -183,7 +202,7 @@ resource "google_cloud_run_v2_service" "app" {
         name = "OPENAI_API_KEY"
         value_source {
           secret_key_ref {
-            secret  = local.openai_secret_id
+            secret  = google_secret_manager_secret.openai_key.secret_id
             version = "latest"
           }
         }
@@ -210,7 +229,7 @@ resource "google_cloud_run_v2_service" "app" {
     google_project_service.apis,
     google_firestore_database.main,
     google_project_iam_member.runtime_firestore,
-    google_project_iam_member.runtime_secrets,
+    google_secret_manager_secret_version.openai_key,
     google_secret_manager_secret_iam_member.runtime_openai_key,
   ]
 }

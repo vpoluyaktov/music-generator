@@ -163,10 +163,14 @@ jobs:
 
       - name: Terraform plan
         working-directory: ${{ steps.env.outputs.ENV_DIR }}
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
         run: terraform plan -var="image_tag=${{ steps.version.outputs.VERSION }}" -out=tfplan
 
       - name: Terraform apply
         working-directory: ${{ steps.env.outputs.ENV_DIR }}
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
         run: terraform apply -auto-approve tfplan
 
       - name: Get service URL
