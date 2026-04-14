@@ -13,27 +13,29 @@ import (
 	oai "music-generator/internal/openai"
 )
 
-// ---------------------------------------------------------------------------
-// cleanABCResponse is unexported; we test it indirectly through the exported
-// Generator interface using a mock HTTP server that returns controlled bodies.
-// ---------------------------------------------------------------------------
-
-// mockOpenAIServer builds a test HTTP server that returns a single assistant
-// message with the given content string.
-func mockOpenAIServer(t *testing.T, content string, statusCode int) *httptest.Server {
+// mockChatServer builds a test HTTP server that responds to any request with
+// a single OpenAI ChatCompletion response containing the given content.
+// If statusCode != 200 the server returns that HTTP error instead.
+func mockChatServer(t *testing.T, content string, statusCode int) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if statusCode != http.StatusOK {
-			http.Error(w, "error", statusCode)
+			w.WriteHeader(statusCode)
+			_, _ = w.Write([]byte(`{"error":{"message":"test error","type":"test"}}`))
 			return
 		}
 		resp := goopenai.ChatCompletionResponse{
+			ID:     "chatcmpl-test",
+			Object: "chat.completion",
+			Model:  "gpt-4o",
 			Choices: []goopenai.ChatCompletionChoice{
 				{
+					Index: 0,
 					Message: goopenai.ChatCompletionMessage{
 						Role:    goopenai.ChatMessageRoleAssistant,
 						Content: content,
 					},
+					FinishReason: goopenai.FinishReasonStop,
 				},
 			},
 		}
@@ -48,7 +50,7 @@ func newTestGenerator(serverURL string) *oai.OpenAIGenerator {
 }
 
 // ---------------------------------------------------------------------------
-// Response-cleaning tests (via the mock HTTP server)
+// cleanABCResponse / response-cleaning tested via the public Generator API
 // ---------------------------------------------------------------------------
 
 func TestGenerateMelody_CleanABCResponse(t *testing.T) {
@@ -71,12 +73,13 @@ func TestGenerateMelody_CleanABCResponse(t *testing.T) {
 			wantContain: "X:1",
 		},
 		{
-			name:        "plain fence stripped",
+			name:        "plain fence stripped (no language tag)",
 			content:     "```\n" + validABC + "\n```",
 			wantContain: "X:1",
 		},
 		{
-			name:        "prose before ABC is kept but still valid",
+			name: "prose before ABC is kept but still valid",
+			// §9.1: prose is preserved; ABC detector still finds X:
 			content:     "Here is your melody:\n\n" + validABC,
 			wantContain: "X:1",
 		},
@@ -96,7 +99,8 @@ func TestGenerateMelody_CleanABCResponse(t *testing.T) {
 			wantErr: oai.ErrMalformedABC,
 		},
 		{
-			name:    "fence with only whitespace after stripping returns ErrEmptyResponse",
+			name: "fence with only whitespace content after stripping returns ErrEmptyResponse",
+			// After stripping ```abc and ```, only whitespace remains.
 			content: "```abc\n   \n```",
 			wantErr: oai.ErrEmptyResponse,
 		},
@@ -104,7 +108,7 @@ func TestGenerateMelody_CleanABCResponse(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			srv := mockOpenAIServer(t, tc.content, http.StatusOK)
+			srv := mockChatServer(t, tc.content, http.StatusOK)
 			defer srv.Close()
 
 			gen := newTestGenerator(srv.URL)
@@ -127,7 +131,7 @@ func TestGenerateMelody_CleanABCResponse(t *testing.T) {
 }
 
 func TestGenerateMelody_OpenAIHTTPError(t *testing.T) {
-	srv := mockOpenAIServer(t, "", http.StatusInternalServerError)
+	srv := mockChatServer(t, "", http.StatusInternalServerError)
 	defer srv.Close()
 
 	gen := newTestGenerator(srv.URL)
@@ -138,9 +142,13 @@ func TestGenerateMelody_OpenAIHTTPError(t *testing.T) {
 }
 
 func TestGenerateMelody_EmptyChoices(t *testing.T) {
-	// Return a valid JSON response but with no choices.
+	// Return valid JSON but with no choices (empty array).
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := goopenai.ChatCompletionResponse{Choices: nil}
+		resp := goopenai.ChatCompletionResponse{
+			ID:      "chatcmpl-empty",
+			Object:  "chat.completion",
+			Choices: []goopenai.ChatCompletionChoice{},
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
 	}))
@@ -153,14 +161,18 @@ func TestGenerateMelody_EmptyChoices(t *testing.T) {
 	}
 }
 
+// containsStr is a zero-dependency substring check.
 func containsStr(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		func() bool {
-			for i := 0; i <= len(s)-len(substr); i++ {
-				if s[i:i+len(substr)] == substr {
-					return true
-				}
-			}
-			return false
-		}())
+	if len(substr) == 0 {
+		return true
+	}
+	if len(s) < len(substr) {
+		return false
+	}
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
