@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Generator</title>
-    <script src="https://cdn.jsdelivr.net/npm/abcjs@6.4.4/dist/abcjs-basic-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/abcjs@6.4.4/dist/abcjs-min.js"></script>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -13,28 +13,28 @@
         }
 
         :root {
-            --bg-primary: #0f1117;
-            --bg-secondary: #1a1d2e;
-            --bg-tertiary: #252840;
-            --bg-card: #1e2133;
-            --border: #2e3150;
-            --border-hover: #4a4f7a;
-            --accent: #6c63ff;
-            --accent-hover: #8078ff;
-            --accent-dim: rgba(108, 99, 255, 0.15);
-            --success: #4ade80;
-            --danger: #f87171;
-            --danger-hover: #ef4444;
-            --danger-dim: rgba(248, 113, 113, 0.12);
-            --warning: #fbbf24;
-            --text-primary: #e8eaf6;
-            --text-secondary: #9099c4;
-            --text-muted: #5c6490;
+            --bg-primary: #f8f9fc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f0f2f7;
+            --bg-card: #f5f6fa;
+            --border: #d8dce8;
+            --border-hover: #b0b8d4;
+            --accent: #5b54e8;
+            --accent-hover: #4a44cc;
+            --accent-dim: rgba(91, 84, 232, 0.10);
+            --success: #16a34a;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --danger-dim: rgba(220, 38, 38, 0.08);
+            --warning: #d97706;
+            --text-primary: #1a1d2e;
+            --text-secondary: #4a5075;
+            --text-muted: #8a90b0;
             --notation-bg: #ffffff;
             --sidebar-width: 280px;
             --radius: 8px;
             --radius-lg: 12px;
-            --shadow: 0 4px 16px rgba(0,0,0,0.4);
+            --shadow: 0 4px 16px rgba(0,0,0,0.10);
             --transition: 150ms ease;
         }
 
@@ -247,7 +247,7 @@
 
         .btn-action-save:hover {
             background: var(--success);
-            color: #0f1117;
+            color: #ffffff;
         }
 
         .btn-action-dup {
@@ -447,6 +447,29 @@
             display: block;
         }
 
+        /* ---- Playback ---- */
+        #playback-container {
+            padding: 6px 16px 8px;
+            background: var(--notation-bg);
+            border-top: 1px solid var(--border);
+        }
+
+        #playback-container .abcjs-inline-audio {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        #no-audio-notice {
+            display: none;
+            padding: 4px 16px 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--notation-bg);
+            border-top: 1px solid var(--border);
+        }
+
         /* ---- ABC editor ---- */
         .abc-section {
             flex: 1;
@@ -482,7 +505,7 @@
             flex: 1;
             width: 100%;
             padding: 14px 16px;
-            background: var(--bg-primary);
+            background: var(--bg-tertiary);
             border: none;
             color: var(--text-primary);
             font-family: 'Cascadia Code', 'Fira Code', 'Source Code Pro', monospace;
@@ -627,6 +650,8 @@
                         Sheet music will appear here
                     </div>
                 </div>
+                <div id="playback-container" class="hidden"></div>
+                <span id="no-audio-notice">Audio not supported in this browser</span>
                 <div class="notation-warning" id="notation-warning">
                     Invalid ABC notation
                 </div>
@@ -664,6 +689,8 @@
     let activeMelodyId = null;
     let isGenerating = false;
     let renderTimer = null;
+    let synthController = null;
+    let audioSupported = (typeof ABCJS !== 'undefined') && ABCJS.synth && ABCJS.synth.supportsAudio();
 
     // ---- DOM refs ----
     const promptInput      = document.getElementById('prompt-input');
@@ -675,9 +702,16 @@
     const notationContainer = document.getElementById('notation-container');
     const notationEmpty    = document.getElementById('notation-empty');
     const notationWarning  = document.getElementById('notation-warning');
+    const playbackContainer = document.getElementById('playback-container');
+    const noAudioNotice    = document.getElementById('no-audio-notice');
     const melodyList       = document.getElementById('melody-list');
     const sidebarEmpty     = document.getElementById('sidebar-empty');
     const btnNew           = document.getElementById('btn-new');
+
+    // Show no-audio notice if Web Audio is unavailable
+    if (!audioSupported) {
+        noAudioNotice.style.display = 'block';
+    }
 
     // ---- Helpers ----
     function showError(msg) {
@@ -716,6 +750,11 @@
             svgs.forEach(s => s.remove());
             const divs = notationContainer.querySelectorAll('.abcjs-container');
             divs.forEach(d => d.remove());
+            // Stop and hide playback
+            if (synthController) {
+                try { synthController.pause(); } catch(e) {}
+            }
+            playbackContainer.classList.add('hidden');
             return;
         }
 
@@ -731,11 +770,13 @@
             const result = ABCJS.renderAbc('notation-container', trimmed, {
                 responsive: 'resize',
                 staffwidth: notationContainer.clientWidth - 32,
-                wrap: { minSpacing: 1.8, maxSpacing: 2.7, preferredMeasuresPerLine: 4 }
+                wrap: { minSpacing: 1.8, maxSpacing: 2.7, preferredMeasuresPerLine: 4 },
+                add_classes: true
             });
 
             // Check for parse warnings/errors
             let hasError = false;
+            let validTune = false;
             if (result && result.length > 0) {
                 const tune = result[0];
                 if (tune && tune.warnings && tune.warnings.length > 0) {
@@ -744,12 +785,38 @@
                 // A tune with no lines usually means failed parse
                 if (!tune || !tune.lines || tune.lines.length === 0) {
                     hasError = true;
+                } else {
+                    validTune = true;
                 }
             }
 
             notationWarning.classList.toggle('visible', hasError);
+
+            // Manage synth controller
+            if (validTune && audioSupported) {
+                playbackContainer.classList.remove('hidden');
+                // Create a fresh SynthController each time valid ABC is rendered
+                synthController = new ABCJS.synth.SynthController();
+                synthController.load('#playback-container', null, {
+                    displayLoop: true,
+                    displayRestart: true,
+                    displayPlay: true,
+                    displayProgress: true,
+                    displayWarp: false
+                });
+                synthController.setTune(result[0], false).catch(function(err) {
+                    console.warn('abcjs synth setTune error:', err);
+                });
+            } else {
+                // Invalid or empty — stop and hide playback
+                if (synthController) {
+                    try { synthController.pause(); } catch(e) {}
+                }
+                playbackContainer.classList.add('hidden');
+            }
         } catch (e) {
             notationWarning.classList.add('visible');
+            playbackContainer.classList.add('hidden');
             console.warn('abcjs render error:', e);
         }
     }
