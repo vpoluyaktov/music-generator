@@ -448,11 +448,18 @@
             display: block;
         }
 
-        /* ---- Playback ---- */
-        #playback-container {
-            padding: 6px 16px 8px;
-            background: var(--notation-bg);
-            border-top: 1px solid var(--border);
+        /* ---- Playback strip ---- */
+        .playback-strip {
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 6px 16px;
+            min-height: 0;
+        }
+
+        .playback-strip:has(.hidden:only-child),
+        .playback-strip:empty {
+            display: none;
         }
 
         #playback-container .abcjs-inline-audio {
@@ -464,11 +471,13 @@
 
         #no-audio-notice {
             display: none;
-            padding: 4px 16px 6px;
             font-size: 11px;
             color: var(--text-muted);
-            background: var(--notation-bg);
-            border-top: 1px solid var(--border);
+        }
+
+        /* ---- Note cursor highlighting ---- */
+        .abcjs-cursor {
+            fill: var(--accent) !important;
         }
 
         /* ---- ABC editor ---- */
@@ -651,12 +660,16 @@
                         Sheet music will appear here
                     </div>
                 </div>
-                <div id="playback-container" class="hidden"></div>
-                <span id="no-audio-notice">Audio not supported in this browser</span>
                 <div class="notation-warning" id="notation-warning">
                     Invalid ABC notation
                 </div>
             </section>
+
+            <!-- Playback strip (always visible, not inside scrolling notation-section) -->
+            <div class="playback-strip">
+                <div id="playback-container" class="hidden"></div>
+                <span id="no-audio-notice">Audio not supported in this browser</span>
+            </div>
 
             <!-- ABC editor -->
             <section class="abc-section">
@@ -739,6 +752,35 @@
         btnGenerateSpinner.classList.toggle('hidden', !active);
     }
 
+    // ---- Cursor control for note highlighting during playback ----
+    const cursorControl = {
+        onStart: function() {
+            document.querySelectorAll('.abcjs-cursor').forEach(function(el) {
+                el.classList.remove('abcjs-cursor');
+            });
+        },
+        onFinished: function() {
+            document.querySelectorAll('.abcjs-cursor').forEach(function(el) {
+                el.classList.remove('abcjs-cursor');
+            });
+        },
+        onBeat: function() {},
+        onEvent: function(ev) {
+            document.querySelectorAll('.abcjs-cursor').forEach(function(el) {
+                el.classList.remove('abcjs-cursor');
+            });
+            if (ev && ev.elements) {
+                ev.elements.forEach(function(els) {
+                    if (els) {
+                        els.forEach(function(el) {
+                            el.classList.add('abcjs-cursor');
+                        });
+                    }
+                });
+            }
+        }
+    };
+
     // ---- ABC rendering ----
     function renderNotation(abcText) {
         const trimmed = (abcText || '').trim();
@@ -798,7 +840,7 @@
                 playbackContainer.classList.remove('hidden');
                 // Create a fresh SynthController each time valid ABC is rendered
                 synthController = new ABCJS.synth.SynthController();
-                synthController.load('#playback-container', null, {
+                synthController.load('#playback-container', cursorControl, {
                     displayLoop: true,
                     displayRestart: true,
                     displayPlay: true,
