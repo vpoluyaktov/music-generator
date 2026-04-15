@@ -1,6 +1,7 @@
 package openai
 
 import (
+	_ "embed"
 	"context"
 	"errors"
 	"fmt"
@@ -22,18 +23,8 @@ var openFenceRE = regexp.MustCompile("^```[^\\s]{0,20}\\s*\\n")
 // closeFenceRE matches a closing markdown code fence at the end of the string.
 var closeFenceRE = regexp.MustCompile("\\n?```\\s*$")
 
-const systemPrompt = `You are an expert music composer specialising in ABC notation.
-When the user describes a musical idea, produce a complete, valid ABC notation tune that realises that idea.
-
-Strict output rules:
-- Output ONLY the ABC notation.
-- No markdown, no code fences, no explanations, no commentary.
-- The tune MUST start with an X: reference number line and include
-  T: (title), M: (meter), L: (default note length), and K: (key)
-  header fields before any music.
-- Use multiple V: voices when the user asks for multiple voices.
-- Keep the tune under 32 bars unless the user requests more.
-- Use standard ABC 2.1 syntax that renders in abcjs.`
+//go:embed system_prompt.txt
+var systemPrompt string
 
 // Generator is the interface for generating ABC notation melodies.
 type Generator interface {
