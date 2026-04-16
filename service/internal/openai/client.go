@@ -62,6 +62,17 @@ func NewOpenAIGeneratorWithBaseURL(apiKey, model string, maxTokens int, temperat
 	}
 }
 
+// isReasoningModel reports whether the model name belongs to the o1/o3/o4/gpt-5 family,
+// which does not support the temperature parameter.
+func isReasoningModel(model string) bool {
+	for _, prefix := range []string{"o1", "o3", "o4", "gpt-5"} {
+		if strings.HasPrefix(model, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // GenerateMelody calls the OpenAI API and returns cleaned ABC notation.
 func (g *OpenAIGenerator) GenerateMelody(ctx context.Context, prompt string) (string, error) {
 	req := goopenai.ChatCompletionRequest{
@@ -70,9 +81,11 @@ func (g *OpenAIGenerator) GenerateMelody(ctx context.Context, prompt string) (st
 			{Role: goopenai.ChatMessageRoleSystem, Content: systemPrompt},
 			{Role: goopenai.ChatMessageRoleUser, Content: prompt},
 		},
-		MaxTokens:   g.maxTokens,
-		Temperature: float32(g.temperature),
-		N:           1,
+		MaxCompletionTokens: g.maxTokens,
+		N:                   1,
+	}
+	if g.temperature != 0 && !isReasoningModel(g.model) {
+		req.Temperature = float32(g.temperature)
 	}
 
 	resp, err := g.client.CreateChatCompletion(ctx, req)
