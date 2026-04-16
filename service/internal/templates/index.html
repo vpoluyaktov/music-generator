@@ -475,6 +475,28 @@
             color: var(--text-muted);
         }
 
+        .volume-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .volume-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .volume-label input[type=range] {
+            width: 80px;
+            accent-color: var(--accent);
+        }
+
         /* ---- Note cursor highlighting ---- */
         .abcjs-cursor {
             fill: #e53e3e !important;
@@ -670,6 +692,10 @@
             <!-- Playback strip (always visible, not inside scrolling notation-section) -->
             <div class="playback-strip">
                 <div id="playback-container" class="hidden"></div>
+                <div class="volume-controls hidden" id="volume-controls">
+                    <label class="volume-label">Music <input type="range" id="music-volume" min="0" max="1" step="0.01" value="1"></label>
+                    <label class="volume-label">Drums <input type="range" id="drums-volume" min="0" max="1" step="0.01" value="1"></label>
+                </div>
                 <span id="no-audio-notice">Audio not supported in this browser</span>
             </div>
 
@@ -707,6 +733,9 @@
     let renderTimer = null;
     let synthController = null;
     let audioSupported = (typeof ABCJS !== 'undefined') && ABCJS.synth && ABCJS.synth.supportsAudio();
+    let musicVolume = 1.0;
+    let drumsVolume = 1.0;
+    let currentTuneObj = null;
 
     // ---- DOM refs ----
     const promptInput      = document.getElementById('prompt-input');
@@ -723,6 +752,9 @@
     const melodyList       = document.getElementById('melody-list');
     const sidebarEmpty     = document.getElementById('sidebar-empty');
     const btnNew           = document.getElementById('btn-new');
+    const volumeControls   = document.getElementById('volume-controls');
+    const musicVolumeSlider = document.getElementById('music-volume');
+    const drumsVolumeSlider = document.getElementById('drums-volume');
 
     // Show no-audio notice if Web Audio is unavailable
     if (!audioSupported) {
@@ -800,6 +832,7 @@
                 try { synthController.pause(); } catch(e) {}
             }
             playbackContainer.classList.add('hidden');
+            volumeControls.classList.add('hidden');
             return;
         }
 
@@ -841,30 +874,45 @@
             if (validTune && audioSupported) {
                 playbackContainer.classList.remove('hidden');
                 // Create a fresh SynthController each time valid ABC is rendered
+                currentTuneObj = result[0];
                 synthController = new ABCJS.synth.SynthController();
                 synthController.load('#playback-container', cursorControl, {
                     displayLoop: true,
                     displayRestart: true,
                     displayPlay: true,
                     displayProgress: true,
-                    displayVolume: true,
+                    displayVolume: false,
                     displayWarp: false
                 });
-                synthController.setTune(result[0], false).catch(function(err) {
+                synthController.setTune(currentTuneObj, false).then(function() {
+                    applyChannelVolumes();
+                }).catch(function(err) {
                     console.warn('abcjs synth setTune error:', err);
                 });
+                volumeControls.classList.remove('hidden');
             } else {
                 // Invalid or empty — stop and hide playback
                 if (synthController) {
                     try { synthController.pause(); } catch(e) {}
                 }
                 playbackContainer.classList.add('hidden');
+                volumeControls.classList.add('hidden');
             }
         } catch (e) {
             notationWarning.classList.add('visible');
             playbackContainer.classList.add('hidden');
+            volumeControls.classList.add('hidden');
             console.warn('abcjs render error:', e);
         }
+    }
+
+    function applyChannelVolumes() {
+        if (!synthController) return;
+        if (typeof synthController.setChannelVolume !== 'function') return;
+        for (let ch = 0; ch <= 8; ch++) {
+            try { synthController.setChannelVolume(ch, musicVolume); } catch(e) {}
+        }
+        try { synthController.setChannelVolume(9, drumsVolume); } catch(e) {}
     }
 
     function scheduleRender() {
@@ -1123,6 +1171,17 @@
         if (action === 'save') saveMelody(id);
         else if (action === 'dup') duplicateMelody(id);
         else if (action === 'del') deleteMelody(id);
+    });
+
+    // Volume sliders
+    musicVolumeSlider.addEventListener('input', function() {
+        musicVolume = parseFloat(this.value);
+        applyChannelVolumes();
+    });
+
+    drumsVolumeSlider.addEventListener('input', function() {
+        drumsVolume = parseFloat(this.value);
+        applyChannelVolumes();
     });
 
     // ---- Init ----
