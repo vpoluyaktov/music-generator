@@ -65,7 +65,7 @@ func TestLoad_Defaults(t *testing.T) {
 		{"ProjectID", cfg.ProjectID, ""},
 		{"FirestoreDatabase", cfg.FirestoreDatabase, "music-generator"},
 		{"OpenAIAPIKey", cfg.OpenAIAPIKey, ""},
-		{"OpenAIModel", cfg.OpenAIModel, "gpt-4o"},
+		{"OpenAIModel", cfg.OpenAIModel, "gpt-5.2"},
 		{"OpenAIMaxTokens", cfg.OpenAIMaxTokens, 2000},
 		{"OpenAITemperature", cfg.OpenAITemperature, 0.8},
 	}
@@ -144,8 +144,8 @@ func TestLoad_PartialOverrides(t *testing.T) {
 	if cfg.Version != "dev" {
 		t.Errorf("Version: got %q, want default %q", cfg.Version, "dev")
 	}
-	if cfg.OpenAIModel != "gpt-4o" {
-		t.Errorf("OpenAIModel: got %q, want default %q", cfg.OpenAIModel, "gpt-4o")
+	if cfg.OpenAIModel != "gpt-5.2" {
+		t.Errorf("OpenAIModel: got %q, want default %q", cfg.OpenAIModel, "gpt-5.2")
 	}
 }
 

@@ -1,1024 +1,973 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Generator</title>
-    <script src="https://cdn.jsdelivr.net/npm/abcjs@6.4.4/dist/abcjs-basic-min.js"></script>
-    <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --bg-primary: #0f1117;
-            --bg-secondary: #1a1d2e;
-            --bg-tertiary: #252840;
-            --bg-card: #1e2133;
-            --border: #2e3150;
-            --border-hover: #4a4f7a;
-            --accent: #6c63ff;
-            --accent-hover: #8078ff;
-            --accent-dim: rgba(108, 99, 255, 0.15);
-            --success: #4ade80;
-            --danger: #f87171;
-            --danger-hover: #ef4444;
-            --danger-dim: rgba(248, 113, 113, 0.12);
-            --warning: #fbbf24;
-            --text-primary: #e8eaf6;
-            --text-secondary: #9099c4;
-            --text-muted: #5c6490;
-            --notation-bg: #ffffff;
-            --sidebar-width: 280px;
-            --radius: 8px;
-            --radius-lg: 12px;
-            --shadow: 0 4px 16px rgba(0,0,0,0.4);
-            --transition: 150ms ease;
-        }
-
-        html, body {
-            height: 100%;
-        }
-
-        body {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            font-size: 14px;
-            line-height: 1.5;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        /* ---- Header ---- */
-        .app-header {
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border);
-            padding: 0 20px;
-            height: 52px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-            z-index: 10;
-        }
-
-        .app-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-            letter-spacing: 0.3px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .app-title-icon {
-            width: 24px;
-            height: 24px;
-            background: var(--accent);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-
-        .version-badge {
-            font-size: 11px;
-            color: var(--text-muted);
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 2px 7px;
-            font-family: monospace;
-        }
-
-        /* ---- Layout ---- */
-        .app-body {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            height: calc(100vh - 52px);
-        }
-
-        /* ---- Sidebar ---- */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            overflow: hidden;
-        }
-
-        .sidebar-header {
-            padding: 14px 16px 12px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-        }
-
-        .sidebar-title {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-muted);
-        }
-
-        .btn-new {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 10px;
-            background: var(--accent-dim);
-            border: 1px solid var(--accent);
-            border-radius: var(--radius);
-            color: var(--accent);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background var(--transition), color var(--transition);
-            min-height: 28px;
-            white-space: nowrap;
-        }
-
-        .btn-new:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .sidebar-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px;
-        }
-
-        .sidebar-list::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .sidebar-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sidebar-list::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 2px;
-        }
-
-        .melody-item {
-            border-radius: var(--radius);
-            padding: 10px 12px;
-            cursor: pointer;
-            transition: background var(--transition);
-            margin-bottom: 4px;
-            border: 1px solid transparent;
-        }
-
-        .melody-item:hover {
-            background: var(--bg-tertiary);
-            border-color: var(--border);
-        }
-
-        .melody-item.active {
-            background: var(--accent-dim);
-            border-color: var(--accent);
-        }
-
-        .melody-item-title {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 3px;
-        }
-
-        .melody-item.active .melody-item-title {
-            color: #fff;
-        }
-
-        .melody-item-date {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        .melody-item-actions {
-            display: flex;
-            gap: 4px;
-            margin-top: 8px;
-            opacity: 0;
-            transition: opacity var(--transition);
-        }
-
-        .melody-item:hover .melody-item-actions,
-        .melody-item.active .melody-item-actions {
-            opacity: 1;
-        }
-
-        .btn-action {
-            padding: 3px 8px;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background var(--transition), color var(--transition), border-color var(--transition);
-            border: 1px solid transparent;
-            min-height: 24px;
-            min-width: 44px;
-            text-align: center;
-        }
-
-        .btn-action-save {
-            background: rgba(74, 222, 128, 0.1);
-            border-color: var(--success);
-            color: var(--success);
-        }
-
-        .btn-action-save:hover {
-            background: var(--success);
-            color: #0f1117;
-        }
-
-        .btn-action-dup {
-            background: var(--bg-tertiary);
-            border-color: var(--border);
-            color: var(--text-secondary);
-        }
-
-        .btn-action-dup:hover {
-            background: var(--border);
-            color: var(--text-primary);
-        }
-
-        .btn-action-del {
-            background: var(--danger-dim);
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-
-        .btn-action-del:hover {
-            background: var(--danger);
-            color: #fff;
-        }
-
-        .sidebar-empty {
-            padding: 32px 16px;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 13px;
-            line-height: 1.7;
-        }
-
-        .sidebar-empty-icon {
-            font-size: 32px;
-            margin-bottom: 10px;
-            opacity: 0.5;
-        }
-
-        /* ---- Main content ---- */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            min-width: 0;
-        }
-
-        /* ---- Prompt section ---- */
-        .prompt-section {
-            padding: 16px 20px;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .prompt-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .prompt-input {
-            flex: 1;
-            padding: 10px 14px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            color: var(--text-primary);
-            font-size: 14px;
-            font-family: inherit;
-            transition: border-color var(--transition), box-shadow var(--transition);
-            min-height: 44px;
-        }
-
-        .prompt-input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .prompt-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
-        }
-
-        .btn-generate {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: var(--accent);
-            border: none;
-            border-radius: var(--radius);
-            color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background var(--transition), box-shadow var(--transition), opacity var(--transition);
-            white-space: nowrap;
-            min-height: 44px;
-            font-family: inherit;
-        }
-
-        .btn-generate:hover:not(:disabled) {
-            background: var(--accent-hover);
-            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.4);
-        }
-
-        .btn-generate:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-        }
-
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            flex-shrink: 0;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .error-bar {
-            display: none;
-            margin-top: 10px;
-            padding: 9px 13px;
-            background: var(--danger-dim);
-            border: 1px solid var(--danger);
-            border-radius: var(--radius);
-            color: var(--danger);
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .error-bar.visible {
-            display: block;
-        }
-
-        /* ---- Editor/notation split ---- */
-        .editor-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            min-height: 0;
-        }
-
-        /* ---- Notation viewer ---- */
-        .notation-section {
-            flex: 0 0 45%;
-            min-height: 120px;
-            background: var(--notation-bg);
-            border-bottom: 1px solid var(--border);
-            overflow: auto;
-            position: relative;
-        }
-
-        #notation-container {
-            padding: 12px 16px;
-            min-height: 100%;
-        }
-
-        #notation-container svg {
-            max-width: 100%;
-        }
-
-        .notation-empty {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #aaa;
-            font-size: 13px;
-            pointer-events: none;
-        }
-
-        .notation-warning {
-            display: none;
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            color: #856404;
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 5px;
-            z-index: 5;
-        }
-
-        .notation-warning.visible {
-            display: block;
-        }
-
-        /* ---- ABC editor ---- */
-        .abc-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            background: var(--bg-card);
-        }
-
-        .abc-section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 14px;
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .abc-section-label {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            color: var(--text-muted);
-        }
-
-        .abc-section-hint {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        #abc-editor {
-            flex: 1;
-            width: 100%;
-            padding: 14px 16px;
-            background: var(--bg-primary);
-            border: none;
-            color: var(--text-primary);
-            font-family: 'Cascadia Code', 'Fira Code', 'Source Code Pro', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            resize: none;
-            outline: none;
-            min-height: 0;
-        }
-
-        #abc-editor::placeholder {
-            color: var(--text-muted);
-        }
-
-        /* ---- Footer ---- */
-        .app-footer {
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            padding: 6px 20px;
-            font-size: 11px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-        }
-
-        /* ---- Utility ---- */
-        .hidden { display: none !important; }
-
-        /* ---- Mobile ---- */
-        @media (max-width: 768px) {
-            body {
-                overflow: auto;
-            }
-
-            .app-body {
-                flex-direction: column;
-                height: auto;
-                overflow: visible;
-            }
-
-            .sidebar {
-                width: 100%;
-                height: auto;
-                max-height: 280px;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .main-content {
-                height: auto;
-                overflow: visible;
-            }
-
-            .editor-area {
-                height: auto;
-                overflow: visible;
-            }
-
-            .notation-section {
-                flex: none;
-                height: 220px;
-                min-height: 220px;
-            }
-
-            .abc-section {
-                flex: none;
-                min-height: 200px;
-            }
-
-            #abc-editor {
-                min-height: 200px;
-            }
-
-            .version-badge {
-                display: none;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/abcjs@6.6.2/dist/abcjs-min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary: #0f1117;
+      --bg-secondary: #1a1d2e;
+      --bg-tertiary: #252840;
+      --bg-card: #1e2133;
+      --border: #2e3150;
+      --border-hover: #4a4f7a;
+      --accent: #6c63ff;
+      --accent-hover: #8078ff;
+      --accent-dim: rgba(108, 99, 255, 0.15);
+      --success: #4ade80;
+      --danger: #f87171;
+      --danger-hover: #ef4444;
+      --danger-dim: rgba(248, 113, 113, 0.12);
+      --warning: #fbbf24;
+      --text-primary: #e8eaf6;
+      --text-secondary: #9099c4;
+      --text-muted: #5c6490;
+      --notation-bg: #ffffff;
+      --sidebar-width: 280px;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 4px 16px rgba(0,0,0,0.4);
+      --transition: 150ms ease;
+    }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .app-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .app-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .app-title-icon {
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .version-badge {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-family: monospace;
+    }
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      height: calc(100vh - 52px);
+    }
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+    }
+    .btn-new {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      min-height: 28px;
+      white-space: nowrap;
+    }
+    .btn-new:hover { background: var(--accent); color: #fff; }
+    .sidebar-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .sidebar-list::-webkit-scrollbar { width: 4px; }
+    .sidebar-list::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .melody-item {
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: background var(--transition);
+      margin-bottom: 4px;
+      border: 1px solid transparent;
+    }
+    .melody-item:hover { background: var(--bg-tertiary); border-color: var(--border); }
+    .melody-item.active { background: var(--accent-dim); border-color: var(--accent); }
+    .melody-item-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .melody-item.active .melody-item-title { color: #fff; }
+    .melody-item-date { font-size: 11px; color: var(--text-muted); }
+    .melody-item-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+    .melody-item:hover .melody-item-actions,
+    .melody-item.active .melody-item-actions { opacity: 1; }
+    .btn-action {
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+      border: 1px solid transparent;
+      min-height: 24px;
+      min-width: 44px;
+      text-align: center;
+    }
+    .btn-action-save { background: rgba(74, 222, 128, 0.1); border-color: var(--success); color: var(--success); }
+    .btn-action-save:hover { background: var(--success); color: #0f1117; }
+    .btn-action-dup { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
+    .btn-action-dup:hover { background: var(--border); color: var(--text-primary); }
+    .btn-action-del { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
+    .btn-action-del:hover { background: var(--danger); color: #fff; }
+    .sidebar-empty {
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .sidebar-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .prompt-section {
+      padding: 16px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .prompt-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .prompt-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      min-height: 44px;
+    }
+    .prompt-input::placeholder { color: var(--text-muted); }
+    .prompt-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+    }
+    .btn-generate {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), box-shadow var(--transition), opacity var(--transition);
+      white-space: nowrap;
+      min-height: 44px;
+      font-family: inherit;
+    }
+    .btn-generate:hover:not(:disabled) {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 12px rgba(108, 99, 255, 0.4);
+    }
+    .btn-generate:disabled { opacity: 0.55; cursor: not-allowed; }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-bar {
+      display: none;
+      margin-top: 10px;
+      padding: 9px 13px;
+      background: var(--danger-dim);
+      border: 1px solid var(--danger);
+      border-radius: var(--radius);
+      color: var(--danger);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .error-bar.visible { display: block; }
+    .editor-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .notation-section {
+      flex: 0 0 45%;
+      min-height: 120px;
+      background: var(--notation-bg);
+      border-bottom: 1px solid var(--border);
+      overflow: auto;
+      position: relative;
+    }
+    #notation-container {
+      padding: 12px 16px;
+      min-height: 100%;
+    }
+    #notation-container svg { max-width: 100%; }
+    .notation-empty {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .notation-warning {
+      display: none;
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      color: #856404;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      z-index: 5;
+    }
+    .notation-warning.visible { display: block; }
+    .abc-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--bg-card);
+    }
+    .abc-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .abc-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+    }
+    .abc-section-hint { font-size: 11px; color: var(--text-muted); }
+    #abc-editor {
+      flex: 1;
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--bg-primary);
+      border: none;
+      color: var(--text-primary);
+      font-family: 'Cascadia Code', 'Fira Code', 'Source Code Pro', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      min-height: 0;
+    }
+    #abc-editor::placeholder { color: var(--text-muted); }
+    .app-footer {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 6px 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 768px) {
+      body { overflow: auto; }
+      .app-body { flex-direction: column; height: auto; overflow: visible; }
+      .sidebar { width: 100%; height: auto; max-height: 280px; border-right: none; border-bottom: 1px solid var(--border); }
+      .main-content { height: auto; overflow: visible; }
+      .editor-area { height: auto; overflow: visible; }
+      .notation-section { flex: none; height: 220px; min-height: 220px; }
+      .abc-section { flex: none; min-height: 200px; }
+      #abc-editor { min-height: 200px; }
+      .version-badge { display: none; }
+    }
+    /* Audio panel styles */
+    .audio-panel {
+      margin-top: 10px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn-audio {
+      padding: 8px 14px;
+      min-height: 36px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-audio:hover { border-color: var(--border-hover); }
+    .btn-audio-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .btn-audio-primary:hover { background: var(--accent-hover); }
+    .btn-audio-danger {
+      background: rgba(248, 113, 113, 0.18);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    .btn-audio-danger:hover { background: var(--danger); color: #fff; }
+    .fader {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .fader input[type="range"] { width: 140px; }
+  </style>
 </head>
 <body>
-
 <header class="app-header">
-    <div class="app-title">
-        <div class="app-title-icon">♪</div>
-        Music Generator
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-        <span class="version-badge">{{.Version}}</span>
-        <span class="version-badge" style="color:var(--text-secondary)">{{.Environment}}</span>
-    </div>
+  <div class="app-title">
+    <div class="app-title-icon">♪</div>
+    Music Generator
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="version-badge">{{.Version}}</span>
+    <span class="version-badge" style="color:var(--text-secondary)">{{.Environment}}</span>
+  </div>
 </header>
 
 <div class="app-body">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Saved Melodies</span>
+      <button class="btn-new" id="btn-new" title="New melody">+ New</button>
+    </div>
+    <div class="sidebar-list" id="melody-list">
+      <div class="sidebar-empty" id="sidebar-empty">
+        <div class="sidebar-empty-icon">♬</div>
+        No melodies yet.<br />Generate your first one!
+      </div>
+    </div>
+  </aside>
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-title">Saved Melodies</span>
-            <button class="btn-new" id="btn-new" title="New melody">
-                + New
-            </button>
+  <main class="main-content">
+    <section class="prompt-section">
+      <div class="prompt-row">
+        <input
+          type="text"
+          id="prompt-input"
+          class="prompt-input"
+          placeholder="Enter a musical prompt... e.g. &quot;Create a 4 voice Bach baroque melody&quot;"
+          maxlength="2000"
+          autocomplete="off"
+        />
+        <button id="btn-generate" class="btn-generate">
+          <span id="btn-generate-text">Generate</span>
+          <span id="btn-generate-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+
+      <div class="audio-panel" id="audio-panel">
+        <button id="btn-play" class="btn-audio btn-audio-primary" title="Play (music + drums)">Play</button>
+        <button id="btn-stop" class="btn-audio btn-audio-danger" title="Stop">Stop</button>
+
+        <label class="fader">
+          Music
+          <input id="vol-music" type="range" min="0" max="1" step="0.01" value="0.85" />
+        </label>
+
+        <label class="fader">
+          Drums
+          <input id="vol-drums" type="range" min="0" max="1" step="0.01" value="1.00" />
+        </label>
+      </div>
+
+      <div id="error-bar" class="error-bar" role="alert"></div>
+    </section>
+
+    <div class="editor-area">
+      <section class="notation-section" id="notation-section">
+        <div id="notation-container">
+          <div class="notation-empty" id="notation-empty">Sheet music will appear here</div>
         </div>
-        <div class="sidebar-list" id="melody-list">
-            <div class="sidebar-empty" id="sidebar-empty">
-                <div class="sidebar-empty-icon">♬</div>
-                No melodies yet.<br>Generate your first one!
-            </div>
+        <div class="notation-warning" id="notation-warning">Invalid ABC notation</div>
+      </section>
+
+      <section class="abc-section">
+        <div class="abc-section-header">
+          <span class="abc-section-label">ABC Notation</span>
+          <span class="abc-section-hint">Edit directly — score updates live</span>
         </div>
-    </aside>
-
-    <!-- Main content -->
-    <main class="main-content">
-
-        <!-- Prompt -->
-        <section class="prompt-section">
-            <div class="prompt-row">
-                <input
-                    type="text"
-                    id="prompt-input"
-                    class="prompt-input"
-                    placeholder="Enter a musical prompt... e.g. &quot;Create a 4 voice Bach baroque melody&quot;"
-                    maxlength="2000"
-                    autocomplete="off"
-                />
-                <button id="btn-generate" class="btn-generate">
-                    <span id="btn-generate-text">Generate</span>
-                    <span id="btn-generate-spinner" class="spinner hidden"></span>
-                </button>
-            </div>
-            <div id="error-bar" class="error-bar" role="alert"></div>
-        </section>
-
-        <!-- Editor + Notation -->
-        <div class="editor-area">
-
-            <!-- Notation viewer -->
-            <section class="notation-section" id="notation-section">
-                <div id="notation-container">
-                    <div class="notation-empty" id="notation-empty">
-                        Sheet music will appear here
-                    </div>
-                </div>
-                <div class="notation-warning" id="notation-warning">
-                    Invalid ABC notation
-                </div>
-            </section>
-
-            <!-- ABC editor -->
-            <section class="abc-section">
-                <div class="abc-section-header">
-                    <span class="abc-section-label">ABC Notation</span>
-                    <span class="abc-section-hint">Edit directly — score updates live</span>
-                </div>
-                <textarea
-                    id="abc-editor"
-                    placeholder="ABC notation will appear here after generation. You can also type or paste ABC notation directly..."
-                    spellcheck="false"
-                ></textarea>
-            </section>
-
-        </div>
-    </main>
-
+        <textarea
+          id="abc-editor"
+          placeholder="ABC notation will appear here after generation. You can also type or paste ABC notation directly..."
+          spellcheck="false"
+        ></textarea>
+      </section>
+    </div>
+  </main>
 </div>
 
 <footer class="app-footer">
-    <span>music-generator &mdash; AI-assisted melody composition</span>
-    <span>abcjs v6.4.4</span>
+  <span>music-generator — AI-assisted melody composition</span>
+  <span>abcjs v6.6.2</span>
 </footer>
 
 <script>
 (function() {
-    'use strict';
+  "use strict";
 
-    // ---- State ----
-    let melodies = [];
-    let activeMelodyId = null;
-    let isGenerating = false;
-    let renderTimer = null;
+  // ---- State ----
+  let melodies = [];
+  let activeMelodyId = null;
+  let isGenerating = false;
+  let renderTimer = null;
 
-    // ---- DOM refs ----
-    const promptInput      = document.getElementById('prompt-input');
-    const btnGenerate      = document.getElementById('btn-generate');
-    const btnGenerateText  = document.getElementById('btn-generate-text');
-    const btnGenerateSpinner = document.getElementById('btn-generate-spinner');
-    const errorBar         = document.getElementById('error-bar');
-    const abcEditor        = document.getElementById('abc-editor');
-    const notationContainer = document.getElementById('notation-container');
-    const notationEmpty    = document.getElementById('notation-empty');
-    const notationWarning  = document.getElementById('notation-warning');
-    const melodyList       = document.getElementById('melody-list');
-    const sidebarEmpty     = document.getElementById('sidebar-empty');
-    const btnNew           = document.getElementById('btn-new');
+  // ---- Audio state (two-pass mixer) ----
+  let audioCtx = null;
+  let gainMusic = null;
+  let gainDrums = null;
+  let synthMusic = null;
+  let synthDrums = null;
+  let isPlaying = false;
 
-    // ---- Helpers ----
-    function showError(msg) {
-        errorBar.textContent = msg;
-        errorBar.classList.add('visible');
+  // ---- DOM refs ----
+  const promptInput = document.getElementById("prompt-input");
+  const btnGenerate = document.getElementById("btn-generate");
+  const btnGenerateText = document.getElementById("btn-generate-text");
+  const btnGenerateSpinner = document.getElementById("btn-generate-spinner");
+  const errorBar = document.getElementById("error-bar");
+  const abcEditor = document.getElementById("abc-editor");
+
+  const notationContainer = document.getElementById("notation-container");
+  const notationEmpty = document.getElementById("notation-empty");
+  const notationWarning = document.getElementById("notation-warning");
+
+  const melodyList = document.getElementById("melody-list");
+  const sidebarEmpty = document.getElementById("sidebar-empty");
+  const btnNew = document.getElementById("btn-new");
+
+  const btnPlay = document.getElementById("btn-play");
+  const btnStop = document.getElementById("btn-stop");
+  const volMusic = document.getElementById("vol-music");
+  const volDrums = document.getElementById("vol-drums");
+
+  // ---- Helpers ----
+  function showError(msg) {
+    errorBar.textContent = msg;
+    errorBar.classList.add("visible");
+  }
+  function clearError() {
+    errorBar.classList.remove("visible");
+    errorBar.textContent = "";
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+  function setGenerating(active) {
+    isGenerating = active;
+    btnGenerate.disabled = active;
+    btnGenerateText.textContent = active ? "Generating..." : "Generate";
+    btnGenerateSpinner.classList.toggle("hidden", !active);
+  }
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // ---- Audio: init mixer ----
+  function ensureAudioGraph() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      gainMusic = audioCtx.createGain();
+      gainDrums = audioCtx.createGain();
+      gainMusic.gain.value = parseFloat(volMusic.value);
+      gainDrums.gain.value = parseFloat(volDrums.value);
+      gainMusic.connect(audioCtx.destination);
+      gainDrums.connect(audioCtx.destination);
+    }
+  }
+
+  volMusic.addEventListener("input", () => {
+    if (gainMusic) gainMusic.gain.value = parseFloat(volMusic.value);
+  });
+  volDrums.addEventListener("input", () => {
+    if (gainDrums) gainDrums.gain.value = parseFloat(volDrums.value);
+  });
+
+  async function stopTwoPass() {
+    try { if (synthMusic) synthMusic.stop(); } catch (e) {}
+    try { if (synthDrums) synthDrums.stop(); } catch (e) {}
+    synthMusic = null;
+    synthDrums = null;
+    isPlaying = false;
+  }
+
+  function splitAbcForTwoPass(abcText) {
+    const lines = (abcText || "").split(/\r?\n/);
+    const header = [];
+    const v1 = [];
+    const v2 = [];
+    const v3 = [];
+    const v4 = [];
+    let current = null;
+
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+
+      if (!current && !/^V:\s*/.test(t)) {
+        header.push(line);
+        continue;
+      }
+
+      if (/^V:\s*1\b/.test(t)) { current = 1; v1.push(line); continue; }
+      if (/^V:\s*2\b/.test(t)) { current = 2; v2.push(line); continue; }
+      if (/^V:\s*3\b/.test(t)) { current = 3; v3.push(line); continue; }
+      if (/^V:\s*4\b/.test(t)) { current = 4; v4.push(line); continue; }
+
+      if (current === 1) v1.push(line);
+      else if (current === 2) v2.push(line);
+      else if (current === 3) v3.push(line);
+      else if (current === 4) v4.push(line);
+      else header.push(line);
     }
 
-    function clearError() {
-        errorBar.classList.remove('visible');
-        errorBar.textContent = '';
+    const headerNoScore = header.filter(l => !l.trim().startsWith("%%score"));
+
+    const musicAbc = [
+      ...headerNoScore,
+      "%%score (V:1 V:2 V:3)",
+      ...v1,
+      ...v2,
+      ...v3
+    ].join("\n");
+
+    const drumsAbc = [
+      ...headerNoScore,
+      "%%score (V:4)",
+      ...v4
+    ].join("\n");
+
+    return { musicAbc, drumsAbc };
+  }
+
+  async function playTwoPass(abcText) {
+    const trimmed = (abcText || "").trim();
+    if (!trimmed) return;
+
+    if (typeof ABCJS === "undefined" || !ABCJS.synth || !ABCJS.synth.CreateSynth) {
+      showError("abcjs synth not available. Ensure abcjs-min.js is loaded.");
+      return;
     }
 
-    function formatDate(iso) {
-        if (!iso) return '';
-        const d = new Date(iso);
-        if (isNaN(d)) return '';
-        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    ensureAudioGraph();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+
+    const parts = splitAbcForTwoPass(trimmed);
+
+    // Parse each into a visualObj (off-DOM) for timing playback.
+    const musicVisual = ABCJS.renderAbc(document.createElement("div"), parts.musicAbc, { add_classes: false })[0];
+    const drumsVisual = ABCJS.renderAbc(document.createElement("div"), parts.drumsAbc, { add_classes: false })[0];
+
+    await stopTwoPass();
+
+    synthMusic = new ABCJS.synth.CreateSynth();
+    await synthMusic.init({ audioContext: audioCtx, visualObj: musicVisual });
+    await synthMusic.prime();
+    if (synthMusic.audioNode) {
+      try { synthMusic.audioNode.disconnect(); } catch (e) {}
+      synthMusic.audioNode.connect(gainMusic);
     }
 
-    function setGenerating(active) {
-        isGenerating = active;
-        btnGenerate.disabled = active;
-        btnGenerateText.textContent = active ? 'Generating...' : 'Generate';
-        btnGenerateSpinner.classList.toggle('hidden', !active);
+    synthDrums = new ABCJS.synth.CreateSynth();
+    await synthDrums.init({ audioContext: audioCtx, visualObj: drumsVisual });
+    await synthDrums.prime();
+    if (synthDrums.audioNode) {
+      try { synthDrums.audioNode.disconnect(); } catch (e) {}
+      synthDrums.audioNode.connect(gainDrums);
     }
 
-    // ---- ABC rendering ----
-    function renderNotation(abcText) {
-        const trimmed = (abcText || '').trim();
+    isPlaying = true;
 
-        if (!trimmed) {
-            notationEmpty.style.display = 'flex';
-            notationWarning.classList.remove('visible');
-            // Clear previous render but keep the empty placeholder
-            const svgs = notationContainer.querySelectorAll('svg');
-            svgs.forEach(s => s.remove());
-            const divs = notationContainer.querySelectorAll('.abcjs-container');
-            divs.forEach(d => d.remove());
-            return;
-        }
+    // Start both (near-simultaneous). Good enough for a 2-fader mixer.
+    synthMusic.start();
+    synthDrums.start();
+  }
 
-        notationEmpty.style.display = 'none';
+  btnPlay.addEventListener("click", () => {
+    clearError();
+    playTwoPass(abcEditor.value).catch(err => showError("Play error: " + err.message));
+  });
+  btnStop.addEventListener("click", () => {
+    stopTwoPass();
+  });
 
-        if (typeof ABCJS === 'undefined') {
-            notationEmpty.style.display = 'flex';
-            notationEmpty.textContent = 'abcjs library not loaded (check network)';
-            return;
-        }
-
-        try {
-            const result = ABCJS.renderAbc('notation-container', trimmed, {
-                responsive: 'resize',
-                staffwidth: notationContainer.clientWidth - 32,
-                wrap: { minSpacing: 1.8, maxSpacing: 2.7, preferredMeasuresPerLine: 4 }
-            });
-
-            // Check for parse warnings/errors
-            let hasError = false;
-            if (result && result.length > 0) {
-                const tune = result[0];
-                if (tune && tune.warnings && tune.warnings.length > 0) {
-                    hasError = true;
-                }
-                // A tune with no lines usually means failed parse
-                if (!tune || !tune.lines || tune.lines.length === 0) {
-                    hasError = true;
-                }
-            }
-
-            notationWarning.classList.toggle('visible', hasError);
-        } catch (e) {
-            notationWarning.classList.add('visible');
-            console.warn('abcjs render error:', e);
-        }
+  // ---- ABC rendering (notation only) ----
+  function renderNotation(abcText) {
+    const trimmed = (abcText || "").trim();
+    if (!trimmed) {
+      notationEmpty.style.display = "flex";
+      notationWarning.classList.remove("visible");
+      const svgs = notationContainer.querySelectorAll("svg");
+      svgs.forEach(s => s.remove());
+      const divs = notationContainer.querySelectorAll(".abcjs-container");
+      divs.forEach(d => d.remove());
+      return;
     }
 
-    function scheduleRender() {
-        clearTimeout(renderTimer);
-        renderTimer = setTimeout(() => {
-            renderNotation(abcEditor.value);
-        }, 300);
+    notationEmpty.style.display = "none";
+    if (typeof ABCJS === "undefined") {
+      notationEmpty.style.display = "flex";
+      notationEmpty.textContent = "abcjs library not loaded (check network)";
+      return;
     }
 
-    // ---- Sidebar rendering ----
-    function renderSidebar() {
-        // Remove existing melody items (keep sidebarEmpty)
-        const items = melodyList.querySelectorAll('.melody-item');
-        items.forEach(i => i.remove());
+    try {
+      const result = ABCJS.renderAbc("notation-container", trimmed, {
+        responsive: "resize",
+        staffwidth: notationContainer.clientWidth - 32,
+        wrap: { minSpacing: 1.8, maxSpacing: 2.7, preferredMeasuresPerLine: 4 }
+      });
 
-        if (!melodies || melodies.length === 0) {
-            sidebarEmpty.style.display = '';
-            return;
-        }
-
-        sidebarEmpty.style.display = 'none';
-
-        melodies.forEach(function(m) {
-            const item = document.createElement('div');
-            item.className = 'melody-item' + (m.id === activeMelodyId ? ' active' : '');
-            item.dataset.id = m.id;
-
-            item.innerHTML =
-                '<div class="melody-item-title" title="' + escHtml(m.title) + '">' + escHtml(m.title) + '</div>' +
-                '<div class="melody-item-date">' + formatDate(m.created_at) + '</div>' +
-                '<div class="melody-item-actions">' +
-                    '<button class="btn-action btn-action-save" data-action="save" data-id="' + escHtml(m.id) + '" title="Save changes">Save</button>' +
-                    '<button class="btn-action btn-action-dup" data-action="dup" data-id="' + escHtml(m.id) + '" title="Duplicate">Dup</button>' +
-                    '<button class="btn-action btn-action-del" data-action="del" data-id="' + escHtml(m.id) + '" title="Delete">Del</button>' +
-                '</div>';
-
-            item.addEventListener('click', function(e) {
-                // Prevent click bubbling from action buttons
-                if (e.target.closest('[data-action]')) return;
-                loadMelody(m);
-            });
-
-            melodyList.appendChild(item);
-        });
+      let hasError = false;
+      if (result && result.length > 0) {
+        const tune = result[0];
+        if (tune && tune.warnings && tune.warnings.length > 0) hasError = true;
+        if (!tune || !tune.lines || tune.lines.length === 0) hasError = true;
+      }
+      notationWarning.classList.toggle("visible", hasError);
+    } catch (e) {
+      notationWarning.classList.add("visible");
+      console.warn("abcjs render error:", e);
     }
+  }
 
-    function escHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+  function scheduleRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => {
+      renderNotation(abcEditor.value);
+    }, 300);
+  }
+
+  // ---- Sidebar rendering ----
+  function renderSidebar() {
+    const items = melodyList.querySelectorAll(".melody-item");
+    items.forEach(i => i.remove());
+
+    if (!melodies || melodies.length === 0) {
+      sidebarEmpty.style.display = "";
+      return;
     }
+    sidebarEmpty.style.display = "none";
 
-    // ---- Load melody into editor ----
-    function loadMelody(m) {
-        activeMelodyId = m.id;
-        abcEditor.value = m.abc_notation || '';
-        renderNotation(abcEditor.value);
-        renderSidebar();
-        clearError();
-    }
+    melodies.forEach(function(m) {
+      const item = document.createElement("div");
+      item.className = "melody-item" + (m.id === activeMelodyId ? " active" : "");
+      item.dataset.id = m.id;
+      item.innerHTML =
+        '<div class="melody-item-title" title="' + escHtml(m.title) + '">' + escHtml(m.title) + "</div>" +
+        '<div class="melody-item-date">' + formatDate(m.created_at) + "</div>" +
+        '<div class="melody-item-actions">' +
+          '<button class="btn-action btn-action-save" data-action="save" data-id="' + escHtml(m.id) + '" title="Save changes">Save</button>' +
+          '<button class="btn-action btn-action-dup" data-action="dup" data-id="' + escHtml(m.id) + '" title="Duplicate">Dup</button>' +
+          '<button class="btn-action btn-action-del" data-action="del" data-id="' + escHtml(m.id) + '" title="Delete">Del</button>' +
+        "</div>";
 
-    // ---- New / clear ----
-    function newMelody() {
-        activeMelodyId = null;
-        abcEditor.value = '';
-        renderNotation('');
-        renderSidebar();
-        clearError();
-        promptInput.focus();
-    }
+      item.addEventListener("click", function(e) {
+        if (e.target.closest("[data-action]")) return;
+        loadMelody(m);
+      });
 
-    // ---- API: fetch list ----
-    async function fetchMelodies() {
-        try {
-            const resp = await fetch('/api/melodies');
-            if (!resp.ok) {
-                const body = await resp.json().catch(() => ({}));
-                throw new Error(body.error || 'Failed to load melodies (' + resp.status + ')');
-            }
-            const data = await resp.json();
-            melodies = Array.isArray(data) ? data : [];
-            renderSidebar();
-        } catch (e) {
-            console.error('fetchMelodies:', e);
-            // Non-fatal: don't show error bar for background refresh failures
-        }
-    }
-
-    // ---- API: generate ----
-    async function generate() {
-        const prompt = promptInput.value.trim();
-        if (!prompt) {
-            showError('Please enter a musical prompt before generating.');
-            promptInput.focus();
-            return;
-        }
-        if (prompt.length > 2000) {
-            showError('Prompt must be 2000 characters or fewer.');
-            return;
-        }
-
-        clearError();
-        setGenerating(true);
-
-        try {
-            const resp = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: prompt })
-            });
-
-            const body = await resp.json().catch(() => null);
-
-            if (!resp.ok) {
-                const msg = (body && body.error) ? body.error : 'Generation failed (' + resp.status + ')';
-                showError(msg);
-                return;
-            }
-
-            // Success: add to list and load
-            if (body && body.id) {
-                // Prepend to local list optimistically, then refresh from server
-                melodies.unshift(body);
-                loadMelody(body);
-                await fetchMelodies();
-            }
-        } catch (e) {
-            showError('Network error: ' + e.message);
-        } finally {
-            setGenerating(false);
-        }
-    }
-
-    // ---- API: save (update) ----
-    async function saveMelody(id) {
-        const melody = melodies.find(function(m) { return m.id === id; });
-        if (!melody) return;
-
-        const abcText = (id === activeMelodyId) ? abcEditor.value : melody.abc_notation;
-
-        try {
-            const resp = await fetch('/api/melodies/' + encodeURIComponent(id), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: melody.title, abc_notation: abcText })
-            });
-
-            const body = await resp.json().catch(() => null);
-
-            if (!resp.ok) {
-                const msg = (body && body.error) ? body.error : 'Save failed (' + resp.status + ')';
-                showError(msg);
-                return;
-            }
-
-            // Update local copy
-            const idx = melodies.findIndex(function(m) { return m.id === id; });
-            if (idx !== -1 && body) {
-                melodies[idx] = body;
-            }
-            renderSidebar();
-            clearError();
-        } catch (e) {
-            showError('Network error while saving: ' + e.message);
-        }
-    }
-
-    // ---- API: duplicate ----
-    async function duplicateMelody(id) {
-        try {
-            const resp = await fetch('/api/melodies/' + encodeURIComponent(id) + '/duplicate', {
-                method: 'POST'
-            });
-
-            const body = await resp.json().catch(() => null);
-
-            if (!resp.ok) {
-                const msg = (body && body.error) ? body.error : 'Duplicate failed (' + resp.status + ')';
-                showError(msg);
-                return;
-            }
-
-            await fetchMelodies();
-            clearError();
-        } catch (e) {
-            showError('Network error while duplicating: ' + e.message);
-        }
-    }
-
-    // ---- API: delete ----
-    async function deleteMelody(id) {
-        const melody = melodies.find(function(m) { return m.id === id; });
-        const title = melody ? melody.title : id;
-
-        if (!confirm('Delete "' + title + '"? This cannot be undone.')) {
-            return;
-        }
-
-        try {
-            const resp = await fetch('/api/melodies/' + encodeURIComponent(id), {
-                method: 'DELETE'
-            });
-
-            if (!resp.ok && resp.status !== 404) {
-                const body = await resp.json().catch(() => null);
-                const msg = (body && body.error) ? body.error : 'Delete failed (' + resp.status + ')';
-                showError(msg);
-                return;
-            }
-
-            // Remove from local list
-            melodies = melodies.filter(function(m) { return m.id !== id; });
-
-            if (activeMelodyId === id) {
-                activeMelodyId = null;
-                abcEditor.value = '';
-                renderNotation('');
-            }
-
-            renderSidebar();
-            clearError();
-        } catch (e) {
-            showError('Network error while deleting: ' + e.message);
-        }
-    }
-
-    // ---- Event listeners ----
-
-    // Generate button
-    btnGenerate.addEventListener('click', function() {
-        if (!isGenerating) generate();
+      melodyList.appendChild(item);
     });
+  }
 
-    // Enter key on prompt input
-    promptInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !isGenerating) generate();
-    });
+  function loadMelody(m) {
+    activeMelodyId = m.id;
+    abcEditor.value = m.abc_notation || "";
+    renderNotation(abcEditor.value);
+    renderSidebar();
+    clearError();
+  }
 
-    // New melody button
-    btnNew.addEventListener('click', newMelody);
-
-    // ABC editor changes — debounced render
-    abcEditor.addEventListener('input', scheduleRender);
-
-    // Sidebar action buttons (event delegation)
-    melodyList.addEventListener('click', function(e) {
-        const btn = e.target.closest('[data-action]');
-        if (!btn) return;
-        e.stopPropagation();
-
-        const action = btn.dataset.action;
-        const id = btn.dataset.id;
-
-        if (action === 'save') saveMelody(id);
-        else if (action === 'dup') duplicateMelody(id);
-        else if (action === 'del') deleteMelody(id);
-    });
-
-    // ---- Init ----
-    fetchMelodies();
-    renderNotation('');
+  function newMelody() {
+    activeMelodyId = null;
+    abcEditor.value = "";
+    renderNotation("");
+    renderSidebar();
+    clearError();
     promptInput.focus();
+  }
 
+  // ---- API: fetch list ----
+  async function fetchMelodies() {
+    try {
+      const resp = await fetch("/api/melodies");
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to load melodies (" + resp.status + ")");
+      }
+      const data = await resp.json();
+      melodies = Array.isArray(data) ? data : [];
+      renderSidebar();
+    } catch (e) {
+      console.error("fetchMelodies:", e);
+    }
+  }
+
+  // ---- API: generate ----
+  async function generate() {
+    const prompt = promptInput.value.trim();
+    if (!prompt) {
+      showError("Please enter a musical prompt before generating.");
+      promptInput.focus();
+      return;
+    }
+    if (prompt.length > 2000) {
+      showError("Prompt must be 2000 characters or fewer.");
+      return;
+    }
+
+    clearError();
+    setGenerating(true);
+
+    try {
+      const resp = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt })
+      });
+
+      const body = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const msg = (body && body.error) ? body.error : "Generation failed (" + resp.status + ")";
+        showError(msg);
+        return;
+      }
+
+      if (body && body.id) {
+        melodies.unshift(body);
+        loadMelody(body);
+        await fetchMelodies();
+      }
+    } catch (e) {
+      showError("Network error: " + e.message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  // ---- API: save (update) ----
+  async function saveMelody(id) {
+    const melody = melodies.find(function(m) { return m.id === id; });
+    if (!melody) return;
+    const abcText = (id === activeMelodyId) ? abcEditor.value : melody.abc_notation;
+
+    try {
+      const resp = await fetch("/api/melodies/" + encodeURIComponent(id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: melody.title, abc_notation: abcText })
+      });
+
+      const body = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const msg = (body && body.error) ? body.error : "Save failed (" + resp.status + ")";
+        showError(msg);
+        return;
+      }
+
+      const idx = melodies.findIndex(function(m) { return m.id === id; });
+      if (idx !== -1 && body) melodies[idx] = body;
+
+      renderSidebar();
+      clearError();
+    } catch (e) {
+      showError("Network error while saving: " + e.message);
+    }
+  }
+
+  // ---- API: duplicate ----
+  async function duplicateMelody(id) {
+    try {
+      const resp = await fetch("/api/melodies/" + encodeURIComponent(id) + "/duplicate", {
+        method: "POST"
+      });
+
+      const body = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const msg = (body && body.error) ? body.error : "Duplicate failed (" + resp.status + ")";
+        showError(msg);
+        return;
+      }
+
+      await fetchMelodies();
+      clearError();
+    } catch (e) {
+      showError("Network error while duplicating: " + e.message);
+    }
+  }
+
+  // ---- API: delete ----
+  async function deleteMelody(id) {
+    const melody = melodies.find(function(m) { return m.id === id; });
+    const title = melody ? melody.title : id;
+    if (!confirm('Delete "' + title + '"? This cannot be undone.')) return;
+
+    try {
+      const resp = await fetch("/api/melodies/" + encodeURIComponent(id), { method: "DELETE" });
+      if (!resp.ok && resp.status !== 404) {
+        const body = await resp.json().catch(() => null);
+        const msg = (body && body.error) ? body.error : "Delete failed (" + resp.status + ")";
+        showError(msg);
+        return;
+      }
+
+      melodies = melodies.filter(function(m) { return m.id !== id; });
+      if (activeMelodyId === id) {
+        activeMelodyId = null;
+        abcEditor.value = "";
+        renderNotation("");
+      }
+      renderSidebar();
+      clearError();
+    } catch (e) {
+      showError("Network error while deleting: " + e.message);
+    }
+  }
+
+  // ---- Event listeners ----
+  btnGenerate.addEventListener("click", function() {
+    if (!isGenerating) generate();
+  });
+
+  promptInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && !isGenerating) generate();
+  });
+
+  btnNew.addEventListener("click", newMelody);
+
+  abcEditor.addEventListener("input", scheduleRender);
+
+  melodyList.addEventListener("click", function(e) {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    e.stopPropagation();
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    if (action === "save") saveMelody(id);
+    else if (action === "dup") duplicateMelody(id);
+    else if (action === "del") deleteMelody(id);
+  });
+
+  // ---- Init ----
+  fetchMelodies();
+  renderNotation("");
+  promptInput.focus();
 })();
 </script>
-
 </body>
 </html>
