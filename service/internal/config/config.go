@@ -42,7 +42,7 @@ func Load() *Config {
 
 	model := os.Getenv("OPENAI_MODEL")
 	if model == "" {
-		model = "gpt-4o"
+		model = "gpt-5.2"
 	}
 
 	maxTokens := 2000
