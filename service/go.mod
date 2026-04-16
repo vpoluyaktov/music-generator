@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	cloud.google.com/go/firestore v1.15.0
-	github.com/sashabaranov/go-openai v1.24.0
+	github.com/sashabaranov/go-openai v1.41.2
 	google.golang.org/grpc v1.62.1
 )
 
