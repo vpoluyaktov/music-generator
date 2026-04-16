@@ -73,8 +73,10 @@ ABCJS NOTATION PRACTICES
 18) Keep directives well-formed and avoid mid-voice field changes that can confuse parsers.
 19) Use chord symbols (e.g., "C", "G7") above V:1 to make harmony explicit, unless user requests otherwise.
 
+20) No empty lines: Never insert blank lines anywhere inside the ABC notation output. Empty lines between voice blocks or between header fields will break abcjs parsing. All voice blocks must follow each other without blank line separators.
+
 ORIGINALITY
-20) Ensure the result is original and does not copy existing melodies. Use stylistic conventions without reproducing known themes.
+21) Ensure the result is original and does not copy existing melodies. Use stylistic conventions without reproducing known themes.
 
 REFERENCE EXAMPLE 1 (CLASSICAL BAROQUE STYLE)
 Use the following as a reference for formatting, voice roles, and an effective V:2 (voice-led Alberti-like support) and V:4 groove with fills:
