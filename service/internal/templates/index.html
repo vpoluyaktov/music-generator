@@ -693,8 +693,10 @@
             <div class="playback-strip">
                 <div id="playback-container" class="hidden"></div>
                 <div class="volume-controls hidden" id="volume-controls">
-                    <label class="volume-label">Music <input type="range" id="music-volume" min="0" max="1" step="0.01" value="1"></label>
-                    <label class="volume-label">Drums <input type="range" id="drums-volume" min="0" max="1" step="0.01" value="1"></label>
+                    <label class="volume-label">Lead <input type="range" id="vol-lead" min="0" max="1" step="0.01" value="1"></label>
+                    <label class="volume-label">Support <input type="range" id="vol-support" min="0" max="1" step="0.01" value="1"></label>
+                    <label class="volume-label">Bass <input type="range" id="vol-bass" min="0" max="1" step="0.01" value="1"></label>
+                    <label class="volume-label">Drums <input type="range" id="vol-drums" min="0" max="1" step="0.01" value="1"></label>
                 </div>
                 <span id="no-audio-notice">Audio not supported in this browser</span>
             </div>
@@ -733,8 +735,10 @@
     let renderTimer = null;
     let synthController = null;
     let audioSupported = (typeof ABCJS !== 'undefined') && ABCJS.synth && ABCJS.synth.supportsAudio();
-    let musicVolume = 1.0;
-    let drumsVolume = 1.0;
+    let volLead    = 1.0;
+    let volSupport = 1.0;
+    let volBass    = 1.0;
+    let volDrums   = 1.0;
     let currentTuneObj = null;
 
     // ---- DOM refs ----
@@ -753,8 +757,10 @@
     const sidebarEmpty     = document.getElementById('sidebar-empty');
     const btnNew           = document.getElementById('btn-new');
     const volumeControls   = document.getElementById('volume-controls');
-    const musicVolumeSlider = document.getElementById('music-volume');
-    const drumsVolumeSlider = document.getElementById('drums-volume');
+    const sliderLead    = document.getElementById('vol-lead');
+    const sliderSupport = document.getElementById('vol-support');
+    const sliderBass    = document.getElementById('vol-bass');
+    const sliderDrums   = document.getElementById('vol-drums');
 
     // Show no-audio notice if Web Audio is unavailable
     if (!audioSupported) {
@@ -909,10 +915,10 @@
     function applyChannelVolumes() {
         if (!synthController) return;
         if (typeof synthController.setChannelVolume !== 'function') return;
-        for (let ch = 0; ch <= 8; ch++) {
-            try { synthController.setChannelVolume(ch, musicVolume); } catch(e) {}
-        }
-        try { synthController.setChannelVolume(9, drumsVolume); } catch(e) {}
+        try { synthController.setChannelVolume(0, volLead); }    catch(e) {}
+        try { synthController.setChannelVolume(1, volSupport); } catch(e) {}
+        try { synthController.setChannelVolume(2, volBass); }    catch(e) {}
+        try { synthController.setChannelVolume(9, volDrums); }   catch(e) {}
     }
 
     function scheduleRender() {
@@ -1174,13 +1180,20 @@
     });
 
     // Volume sliders
-    musicVolumeSlider.addEventListener('input', function() {
-        musicVolume = parseFloat(this.value);
+    sliderLead.addEventListener('input', function() {
+        volLead = parseFloat(this.value);
         applyChannelVolumes();
     });
-
-    drumsVolumeSlider.addEventListener('input', function() {
-        drumsVolume = parseFloat(this.value);
+    sliderSupport.addEventListener('input', function() {
+        volSupport = parseFloat(this.value);
+        applyChannelVolumes();
+    });
+    sliderBass.addEventListener('input', function() {
+        volBass = parseFloat(this.value);
+        applyChannelVolumes();
+    });
+    sliderDrums.addEventListener('input', function() {
+        volDrums = parseFloat(this.value);
         applyChannelVolumes();
     });
 
