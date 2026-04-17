@@ -10,6 +10,18 @@ import (
 	"music-generator/internal/templates"
 )
 
+func serveEmbedded(name, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := templates.FS.ReadFile(name)
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Write(data)
+	}
+}
+
 // Server holds shared dependencies for all HTTP handlers.
 type Server struct {
 	cfg       *config.Config
@@ -43,6 +55,7 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("POST /api/melodies/{id}/duplicate", s.handleDuplicateMelody)
 	mux.HandleFunc("DELETE /api/melodies/{id}", s.handleDeleteMelody)
 	// Exact match for root — prevents swallowing 405s from API routes.
+	mux.HandleFunc("GET /abcjs-min.js", serveEmbedded("abcjs-min.js", "application/javascript"))
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 
 	return recoverMW(logMW(mux))
