@@ -8,28 +8,28 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg-primary: #0f1117;
-      --bg-secondary: #1a1d2e;
-      --bg-tertiary: #252840;
-      --bg-card: #1e2133;
-      --border: #2e3150;
-      --border-hover: #4a4f7a;
-      --accent: #6c63ff;
-      --accent-hover: #8078ff;
-      --accent-dim: rgba(108, 99, 255, 0.15);
-      --success: #4ade80;
-      --danger: #f87171;
-      --danger-hover: #ef4444;
-      --danger-dim: rgba(248, 113, 113, 0.12);
-      --warning: #fbbf24;
-      --text-primary: #e8eaf6;
-      --text-secondary: #9099c4;
-      --text-muted: #5c6490;
+      --bg-primary: #f0f2f8;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e8eaf2;
+      --bg-card: #f7f8fc;
+      --border: #d0d4e8;
+      --border-hover: #9ca3c0;
+      --accent: #5b52e0;
+      --accent-hover: #4a42c8;
+      --accent-dim: rgba(91, 82, 224, 0.10);
+      --success: #16a34a;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --danger-dim: rgba(220, 38, 38, 0.08);
+      --warning: #d97706;
+      --text-primary: #1e2133;
+      --text-secondary: #4a5270;
+      --text-muted: #6b7280;
       --notation-bg: #ffffff;
       --sidebar-width: 280px;
       --radius: 8px;
       --radius-lg: 12px;
-      --shadow: 0 4px 16px rgba(0,0,0,0.4);
+      --shadow: 0 4px 16px rgba(0,0,0,0.08);
       --transition: 150ms ease;
     }
     html, body { height: 100%; }
@@ -157,7 +157,7 @@
       text-overflow: ellipsis;
       margin-bottom: 3px;
     }
-    .melody-item.active .melody-item-title { color: #fff; }
+    .melody-item.active .melody-item-title { color: var(--accent); }
     .melody-item-date { font-size: 11px; color: var(--text-muted); }
     .melody-item-actions {
       display: flex;
@@ -181,7 +181,7 @@
       text-align: center;
     }
     .btn-action-save { background: rgba(74, 222, 128, 0.1); border-color: var(--success); color: var(--success); }
-    .btn-action-save:hover { background: var(--success); color: #0f1117; }
+    .btn-action-save:hover { background: var(--success); color: #fff; }
     .btn-action-dup { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
     .btn-action-dup:hover { background: var(--border); color: var(--text-primary); }
     .btn-action-del { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
