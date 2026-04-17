@@ -18,7 +18,9 @@ func serveEmbedded(name, contentType string) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", contentType)
-		w.Write(data)
+		if _, err = w.Write(data); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
 	}
 }
 
