@@ -18,6 +18,9 @@ vendor/
 *-credentials.json
 service-account*.json
 
+.terraform/
+.terraform.lock.hcl
+
 # Build output
 bin/
 dist/
