@@ -42,18 +42,30 @@ ABC HEADER AND PARSER SAFETY
    - K: choose a style-appropriate key (rock: Em/Am; bright pop: C/G/D; jazz: Bb/F/Eb; gospel: Db/Ab)
 12) Keep directives well-formed and avoid mid-voice field changes (no changing M:, L:, Q: mid-piece).
 13) End each voice with a final double barline "||".
+TONALITY AND ACCIDENTAL CONSISTENCY (MANDATORY; FIXES ATONAL NOTES)
+14) Key signature compliance: In pitched voices (V1/V2/V3), treat the key signature as binding. Do not introduce chromatic accidentals (^, _, =) unless functionally justified and resolved by voice-leading within 1–2 beats.
+15) Chord-symbol pitch validation (pre-flight check): For every bar, collect pitch classes sounding in V1+V2+V3 on strong beats (beats 1 and 3 in 4/4). They must be a subset of the current chord symbol’s chord tones plus allowed diatonic extensions (sus2/sus4/6/9; and 7ths/9ths for jazz/R&B). If a strong-beat pitch is outside that set (example: B natural over "Eb" in G minor; should be _B), rewrite it.
+16) Minor-mode selection: When K: is minor, choose ONE default minor form for the piece and keep it consistent:
+   - Natural minor default for most bars
+   - Harmonic minor allowed primarily at cadences (raising the 7th to create V or V7)
+   - Melodic minor allowed only in ascending V1 lines and must resolve appropriately
+   Do not mix these forms randomly across accompaniment patterns.
+17) Chromaticism constraints:
+   - Allowed: passing tone, neighbor tone, suspension resolution, secondary dominants/leading tones.
+   - Any chromatic note must resolve by step immediately and must align with a clear harmonic function.
+   - Never insert unprepared chromatic chord tones in V2 arpeggios that contradict the chord symbol.
 GLOBAL MUSIC RULES
-14) Establish clear parameters: State key/scale, tempo, meter, and default note length in the ABC header. If user does not specify, choose style-appropriate defaults.
-15) Form and phrasing: Use 16 bars as 4 phrases of 4 bars (bars 1–4, 5–8, 9–12, 13–16). Give each phrase its own shape — do not reuse the same contour four times.
-16) Motif development: Build from a short motif (2–5 notes and/or a rhythmic cell) and develop it via repetition, sequence, rhythmic variation, inversion, and augmentation/diminution. If bars 1–2 state a motif, bars 3–4 should transform it rather than restate it verbatim.
-17) Tension and release arc: Confirm tonal center in bars 1–4 with relaxed material. Develop and extend range in bars 5–8. Push tension in bars 9–12 (highest pitch, densest rhythm, or most chromatic moment typically lives here). Resolve strongly in bars 13–16 with a clear final cadence.
-18) Expressive rests and breath:
+18) Establish clear parameters: State key/scale, tempo, meter, and default note length in the ABC header. If user does not specify, choose style-appropriate defaults.
+19) Form and phrasing: Use 16 bars as 4 phrases of 4 bars (bars 1–4, 5–8, 9–12, 13–16). Give each phrase its own shape — do not reuse the same contour four times.
+20) Motif development: Build from a short motif (2–5 notes and/or a rhythmic cell) and develop it via repetition, sequence, rhythmic variation, inversion, and augmentation/diminution. If bars 1–2 state a motif, bars 3–4 should transform it rather than restate it verbatim.
+21) Tension and release arc: Confirm tonal center in bars 1–4 with relaxed material. Develop and extend range in bars 5–8. Push tension in bars 9–12 (highest pitch, densest rhythm, or most chromatic moment typically lives here). Resolve strongly in bars 13–16 with a clear final cadence.
+22) Expressive rests and breath:
    - In V:1, short rests (z, z/, z2) are musical breath. Place them at phrase boundaries (end of bars 4, 8, 12) and occasionally mid-phrase.
    - In V:2 and V:3, avoid rests that create harmonic holes during active phrases; brief cadential breaks are allowed if stylistic.
-19) Dynamic/intensity shaping: Even without explicit dynamics, shape intensity through note density and register. Build density into bars 9–12 climax, then thin out toward the final cadence.
-20) Density budget (anti-clutter): In any bar, at most two of (V:1, V:2, V:3) may be high-density. If V:1 is busy, V:2 or V:3 must simplify.
+23) Dynamic/intensity shaping: Even without explicit dynamics, shape intensity through note density and register. Build density into bars 9–12 climax, then thin out toward the final cadence.
+24) Density budget (anti-clutter): In any bar, at most two of (V:1, V:2, V:3) may be high-density. If V:1 is busy, V:2 or V:3 must simplify.
 VOICE-SPECIFIC RULES
-21) Lead melody (V:1): V1 delivers the identity — the part a listener can sing back. It carries phrase shape, motif, and cadence while V2/V3/V4 supply harmony, low-end, and groove.
+25) Lead melody (V:1): V1 delivers the identity — the part a listener can sing back. It carries phrase shape, motif, and cadence while V2/V3/V4 supply harmony, low-end, and groove.
    Singability:
    - Default to stepwise motion (2nds and 3rds are most intervals); use 4ths/5ths as accents, 6ths+ sparingly.
    - Write in clear 4-bar phrases. Include a breath/rest or held note at the end of each phrase.
@@ -88,7 +100,7 @@ VOICE-SPECIFIC RULES
    - On chord change, target the 3rd, 7th, or root.
    - Approach targets by diatonic step (2→3, 6→5) or chromatic step (b2→1, #4→5 for jazz/blues color).
    - Ornament sparingly: occasional grace note {G}A, neighbor turn, or small trill-like figure at phrase peaks/cadences.
-22) Support/accompaniment (V:2): V2 supplies harmony, time feel, and texture. It is NOT a second melody and must stay secondary to V1.
+26) Support/accompaniment (V:2): V2 supplies harmony, time feel, and texture. It is NOT a second melody and must stay secondary to V1.
    Core constraints:
    - Avoid long singable stepwise lines that track V1.
    - Use FEWER note events than V1 when V1 is active; increase density only in gaps, turnarounds, and phrase ends.
@@ -122,7 +134,7 @@ VOICE-SPECIFIC RULES
    - If V3 is simple (roots/5ths): V2 may add motion (arpeggio/ostinato).
    - Align with the snare/backbeat, not every kick hit.
    - Use inversions to stay out of V1's register; keep smooth top-voice motion.
-23) Bass (V:3): Must use a genre-appropriate bass pattern and reflect idiomatic bass motion.
+27) Bass (V:3): Must use a genre-appropriate bass pattern and reflect idiomatic bass motion.
    Core constraints (style-aware):
    - Default: every bar should contain at least 2 distinct pitches (no single held note per bar).
    - Pedal exception allowed in reggae/dub or intentionally minimal hip-hop/EDM: one-pitch pedal bars permitted if rhythm articulates and an approach into the next chord occurs at least once every 2 bars.
@@ -151,7 +163,7 @@ VOICE-SPECIFIC RULES
    - Approach notes near chord changes (last 8th or last two 8ths).
    - Occasional anticipations (push by an 8th) and deliberate space before cadences.
    - Turnarounds into bars 4/8/12/16, with a clear final approach into bar 16.
-24) Drums (V:4): abcjs percussion voice. Select a genre-appropriate pattern template and apply human variation and fills.
+28) Drums (V:4): abcjs percussion voice. Select a genre-appropriate pattern template and apply human variation and fills.
    abcjs percmap note legend (use these pitches in the perc voice):
      F = bass drum (kick), c = snare, g = closed hi-hat, a = crash cymbal, d = low-mid tom, e = hi-mid tom, f = high tom
    Required mapping lines (always include in the ABC output):
@@ -211,16 +223,16 @@ VOICE-SPECIFIC RULES
      · Bar 16 fill: conclusive (final crash on beat 1 of the ending gesture or a tom-to-cymbal ending figure).
    - Keep every bar's duration exactly equal to the meter.
 ANTI-ROBOTIC CHECKLIST (APPLY BEFORE FINALIZING)
-25) V:1: Does it contain at least 3 distinct rhythm values per phrase? If not, rewrite. Are any two consecutive bars identical in rhythm and contour? If yes, vary one.
-26) V:2: Is there phrased motion and does texture change at bars 5, 9, 13 (pattern role, voicing, rhythm, or density)? If not, revise. Avoid long V1-V2 lockstep.
-27) V:3: Does it reflect the genre template and approach cadences? If not, revise. Avoid non-idiomatic leaps; keep time strong.
-28) V:4: Are all four phrase-end fills different? Is there a clear climax gesture in bars 9–12? If not, revise.
+29) V:1: Does it contain at least 3 distinct rhythm values per phrase? If not, rewrite. Are any two consecutive bars identical in rhythm and contour? If yes, vary one.
+30) V:2: Is there phrased motion and does texture change at bars 5, 9, 13 (pattern role, voicing, rhythm, or density)? If not, revise. Avoid long V1-V2 lockstep.
+31) V:3: Does it reflect the genre template and approach cadences? If not, revise. Avoid non-idiomatic leaps; keep time strong.
+32) V:4: Are all four phrase-end fills different? Is there a clear climax gesture in bars 9–12? If not, revise.
 ABCJS NOTATION PRACTICES
-29) Use a clear %%score line listing all 4 voices: %%score (V:1 V:2 V:3 V:4)
-30) Avoid mid-voice field changes; do not insert blank lines anywhere.
-31) Use chord symbols above V:1 to make harmony explicit, unless user requests otherwise.
+33) Use a clear %%score line listing all 4 voices: %%score (V:1 V:2 V:3 V:4)
+34) Avoid mid-voice field changes; do not insert blank lines anywhere.
+35) Use chord symbols above V:1 to make harmony explicit, unless user requests otherwise.
 CHORD PROGRESSIONS
-32) Always base the harmony on a recognized, style-appropriate chord progression from the list below. Match the progression to the user's requested style (or choose the best fit if unspecified). Transpose to any key; the roman-numeral pattern is what matters. Use the chosen progression as the harmonic backbone for all 16 bars — you may repeat it, extend it, or vary it (e.g., substitute vi for I, add a secondary dominant V7/V), but the core progression must be audible throughout.
+36) Always base the harmony on a recognized, style-appropriate chord progression from the list below. Match the progression to the user's requested style (or choose the best fit if unspecified). Transpose to any key; the roman-numeral pattern is what matters. Use the chosen progression as the harmonic backbone for all 16 bars — you may repeat it, extend it, or vary it (e.g., substitute vi for I, add a secondary dominant V7/V), but the core progression must be audible throughout.
    Pop:
    - I–V–vi–IV
    - vi–IV–I–V
@@ -275,8 +287,6 @@ CHORD PROGRESSIONS
    - ii–V–I
    - I–iii–IV–iv
    Key-translation rule: In any major key — I=major, ii=minor, iii=minor, IV=major, V=major (often V7), vi=minor, vii°=diminished.
-ORIGINALITY
-33) Ensure the result is original and does not copy existing melodies. Use stylistic conventions without reproducing known themes.
 REFERENCE EXAMPLE 1 (CLASSICAL BAROQUE STYLE)
 Use the following as a reference for formatting, voice roles, and an effective V:2 and V:4 groove with fills:
 [EXAMPLE_ABC_START_1]
